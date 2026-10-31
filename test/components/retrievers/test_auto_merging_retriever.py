@@ -216,6 +216,55 @@ class TestAutoMergingRetriever:
         assert len(result["documents"]) == 2
         assert result["documents"][0].meta["__parent_id"] != result["documents"][1].meta["__parent_id"]
 
+    def test_run_counts_duplicate_leaf_documents_once(self, in_memory_doc_store):
+        parent = Document(
+            id="parent", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        leaves = [
+            Document(id=leaf_id, content=leaf_id, meta={"__parent_id": "parent", "__level": 1, "__block_size": 1})
+            for leaf_id in ("a", "b", "c")
+        ]
+        in_memory_doc_store.write_documents([parent, *leaves])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+
+        # "a" is retrieved twice, but it is still only 1 of the parent's 3 children (1/3 < 0.5)
+        result = retriever.run([leaves[0], leaves[0]])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]
+
+    def test_run_keeps_the_highest_scored_duplicate_leaf(self, in_memory_doc_store):
+        parent = Document(
+            id="parent", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        leaf_meta = {"__parent_id": "parent", "__level": 1, "__block_size": 1}
+        in_memory_doc_store.write_documents([parent])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+
+        result = retriever.run(
+            [
+                Document(id="a", content="a", meta=leaf_meta, score=0.2),
+                Document(id="a", content="a", meta=leaf_meta, score=0.9),
+            ]
+        )
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].score == 0.9
+
+    def test_run_merges_when_distinct_leaves_exceed_threshold_despite_duplicates(self, in_memory_doc_store):
+        parent = Document(
+            id="parent", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        leaves = [
+            Document(id=leaf_id, content=leaf_id, meta={"__parent_id": "parent", "__level": 1, "__block_size": 1})
+            for leaf_id in ("a", "b", "c")
+        ]
+        in_memory_doc_store.write_documents([parent, *leaves])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+
+        result = retriever.run([leaves[0], leaves[1], leaves[0]])
+
+        assert [doc.id for doc in result["documents"]] == ["parent"]
+
     def test_run_go_up_hierarchy_multiple_levels(self, in_memory_doc_store):
         """
         Test if the retriever can go up the hierarchy multiple levels to find the parent document.

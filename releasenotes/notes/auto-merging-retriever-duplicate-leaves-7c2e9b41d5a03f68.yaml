@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``AutoMergingRetriever`` now counts each matched leaf document only once when deciding whether to return
+    its parent. Before, a leaf retrieved more than once (for example, by two retrievers whose results are
+    concatenated) was counted for every copy, so the parent could be returned even though fewer distinct
+    children than the threshold were matched, and an unmerged duplicate leaf was returned more than once.
+    Duplicates are now removed by document ID first, keeping the copy with the highest score.
