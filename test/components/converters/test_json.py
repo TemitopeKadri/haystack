@@ -541,6 +541,19 @@ def test_run_with_content_key_with_scalar_values(value, expected):
     assert result["documents"][0].content == expected
 
 
+@pytest.mark.parametrize(
+    "value, expected", [(123, "123"), (1.5, "1.5"), (True, "True"), ("text", "text"), (None, None)]
+)
+def test_run_with_jq_schema_with_scalar_values(value, expected):
+    source = ByteStream.from_string(json.dumps({"items": [{"body": value}]}))
+
+    converter = JSONConverter(jq_schema=".items[].body")
+    result = converter.run(sources=[source])
+
+    assert len(result["documents"]) == 1
+    assert result["documents"][0].content == expected
+
+
 def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     first_test_file = Path(tmpdir / "first_test_file.json")
     second_test_file = Path(tmpdir / "second_test_file.json")

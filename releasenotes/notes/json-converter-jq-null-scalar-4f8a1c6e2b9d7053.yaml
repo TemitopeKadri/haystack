@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``JSONConverter`` no longer creates a ``Document`` with the text ``"None"`` when a ``jq_schema`` without a
+    ``content_key`` extracts a JSON ``null``. The ``Document`` now has no content, the same as when ``content_key``
+    points to a ``null`` value.

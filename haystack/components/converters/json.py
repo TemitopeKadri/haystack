@@ -185,7 +185,7 @@ class JSONConverter:
         """
         return default_from_dict(cls, data)
 
-    def _get_content_and_meta(self, source: ByteStream) -> list[tuple[str, dict[str, Any]]]:
+    def _get_content_and_meta(self, source: ByteStream) -> list[tuple[str | None, dict[str, Any]]]:
         """
         Utility function to extract text and metadata from a JSON file.
 
@@ -262,7 +262,8 @@ class JSONConverter:
                 if isinstance(obj, (dict, list)):
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
-                result.append((str(obj), {}))
+                # Keep `null` as a Document without content, like the `content_key` path, instead of the text "None"
+                result.append((None if obj is None else str(obj), {}))
 
         return result
 
